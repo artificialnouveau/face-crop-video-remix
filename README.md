@@ -1,5 +1,10 @@
 # Realtime Video Analysis Scripts
 
+## Author
+Artificial Nouveau
+
+## Objective
+
 This repository includes two Python scripts for realtime video analysis:
 
 1. `stream_monitor.py`: Monitors a video stream and saves 1-minute clips whenever a person's face is detected.
