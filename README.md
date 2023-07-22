@@ -22,13 +22,7 @@ You'll need to have the following tools installed:
 To install the Python libraries, you can use pip:
 
 ```bash
-pip install opencv-python-headless dlib
-```
-
-Make sure you have the `ffmpeg` tool installed on your system. For Ubuntu, you can use:
-
-```bash
-sudo apt-get install ffmpeg
+pip install opencv-python-headless dlib ffmpeg
 ```
 
 Also, you need to download the trained model file for the dlib's face detector. The file is called `shape_predictor_68_face_landmarks.dat` and you can download it from [here](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2). After downloading, extract it to the same directory as your Python scripts.
