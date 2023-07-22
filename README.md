@@ -1,45 +1,70 @@
-# face-crop-video-remix
-# Face Crop Video Remix README
+# Realtime Video Analysis Scripts
 
-This Python script analyzes a video to detect faces and then crops the faces, mouths, left eyes, and right eyes of each person in the video. It then overlays these cropped sections onto the original video in each corner.
+This repository includes two Python scripts for realtime video analysis:
 
-## Requirements
+1. `stream_monitor.py`: Monitors a video stream and saves 1-minute clips whenever a person's face is detected.
+2. `face_analysis.py`: Analyzes the saved clips, applies overlays for face, eyes, and mouth, and then plays back the video.
 
-This script requires the following Python libraries:
+## Prerequisites
 
-- cv2
-- dlib
-- numpy
+You'll need to have the following tools installed:
 
-It also requires the dlib shape predictor data file `shape_predictor_68_face_landmarks.dat` to be in the same directory as the script. You can download it from the dlib sourceforge repository: http://dlib.net/files/
+- Python 3
+- OpenCV-Python
+- Dlib
+- Ffmpeg
 
-In addition, it requires ffmpeg for overlaying the cropped videos onto the original video. Please ensure that ffmpeg is installed and added to your PATH.
+To install the Python libraries, you can use pip:
+
+```bash
+pip install opencv-python-headless dlib
+```
+
+Make sure you have the `ffmpeg` tool installed on your system. For Ubuntu, you can use:
+
+```bash
+sudo apt-get install ffmpeg
+```
+
+Also, you need to download the trained model file for the dlib's face detector. The file is called `shape_predictor_68_face_landmarks.dat` and you can download it from [here](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2). After downloading, extract it to the same directory as your Python scripts.
 
 ## Usage
 
-The input video should be named `input_video.mp4` and be in the same directory as the script. The script will produce the output video as `output.mp4` in the same directory.
+First, run `stream_monitor.py` to start monitoring the video stream. 
 
-The script works as follows:
+```bash
+python stream_monitor.py
+```
 
-1. The script reads the input video frame by frame. For each frame, it uses the dlib face detector to find faces in the frame.
-2. For each detected face, it uses the dlib shape predictor to find facial landmarks.
-3. It then crops the face, mouth, left eye, and right eye from the frame based on these landmarks.
-4. These cropped sections are written to separate video files: `faces.avi`, `mouth.avi`, `leyes.avi`, and `reyes.avi`.
-5. After processing the entire video, it overlays the cropped videos onto the original video. The faces video is overlayed in the top right corner, the left eyes video is overlayed in the bottom left corner, the right eyes video is overlayed in the top left corner, and the mouths video is overlayed in the bottom right corner. Each overlay is 1/4 the size of the original video.
-6. The overlayed video is written to `output.mp4`.
+The script will save 1-minute video clips whenever it detects a face in the video stream. The clips are saved in the AVI format with the timestamp of their start time as their filenames.
 
-To run the script, navigate to the directory containing the script and the input video, and then use the following command:
+After you have collected some video clips, you can analyze them with `face_analysis.py`:
 
 ```bash
 python face_analysis.py
 ```
 
-Please replace `face_analysis.py` with the actual filename of the script.
+The script processes each of the saved clips, overlays cropped face, eyes, and mouth videos at different corners, and then saves the result. The output videos are saved in the MP4 format with the original timestamp plus `_output` added to their filenames. After the processing of each clip, the result is played back using the `ffplay` command.
 
-## Limitations
+Please note that the face, eyes, and mouth videos are also saved with their respective names for further analysis or usage. 
 
-This script assumes that the video only contains one face. If the video contains more than one face, the script may produce unexpected results, as it doesn't handle multiple faces separately.
+Remember to adjust the scripts or the parameters used for face detection according to your camera setup and lighting conditions to achieve the best performance.
 
-The script does not include any error checking or handling. If any issues occur during execution, such as the input video file not being found, or a face, mouth, or eye not being detected in a frame, the script may crash with an error. 
 
-Finally, the size and position of the overlays are hardcoded in the script. If you want to use different sizes or positions, you will need to modify the script accordingly.
+## Optional: Automate the Analysis Process
+
+If you want `face_crop_video_remix.py` to automatically process a video clip as soon as it is created, you can use a tool such as [Watchdog](https://pypi.org/project/watchdog/). This Python library allows you to monitor a directory for file changes and trigger actions when a change occurs.
+
+First, install the library with pip:
+
+```bash
+pip install watchdog
+```
+
+To run the script, use:
+
+```bash
+python auto_process.py
+```
+
+Please be aware that this script might lead to synchronization issues if new video clips are created faster than `face_crop_video_remix.py` can process them. You might need to implement a queuing system or use locks to handle such situations.
