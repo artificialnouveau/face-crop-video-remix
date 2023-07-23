@@ -9,7 +9,7 @@ import random
 detector = dlib.get_frontal_face_detector()
 
 # Video source
-cap = cv2.VideoCapture('BlackOrWhite.mp4')
+cap = cv2.VideoCapture('./BlackOrWhite.mp4')
 
 # Create a figure for plotting
 fig = plt.figure()
