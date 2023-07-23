@@ -1,108 +1,128 @@
 import cv2
 import dlib
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 import random
 
-# Load the detector and the predictor
+# Function to apply a simple "glitch" effect to an image
+
+
+def glitch(img, shift_range=5):
+    img_glitched = img.copy()
+    for i in range(img.shape[0]):
+        img_glitched[i] = np.roll(
+            img_glitched[i], shift=random.randint(-shift_range, shift_range), axis=0)
+    return img_glitched
+
+
+# Load the detector
 detector = dlib.get_frontal_face_detector()
 
 # Video source
 cap = cv2.VideoCapture('./BlackOrWhite.mp4')
 
-# Create a figure for plotting
-fig = plt.figure()
+# Constants for defining cropped image size
+IMG_SIZE = (100, 100)
 
-# Lists to store individual trackers, axes and images for each face detected
-trackers = []
-axes = []
-images = []
+# Constants for defining the display size
+DISPLAY_SIZE = (300, 300)
 
-# Function to apply a simple "glitch" effect to an image
-def glitch(img):
-    # Copy the image
-    img_glitched = img.copy()
+# Video writer with reduced FPS for a slower video
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Be sure to use lower case
+# Lower the FPS from 20.0 to 10.0 to slow down the video
+out = cv2.VideoWriter('output.mp4', fourcc, 10.0, DISPLAY_SIZE)
 
-    # Shift rows of pixels randomly to the right
-    for i in range(img.shape[0]):
-        img_glitched[i] = np.roll(img_glitched[i], shift=random.randint(-5, 5), axis=0)
+# Variables to hold the last few processed frames
+last_images = []
+last_image_index = 0
+num_last_images = 10  # The number of last images to keep track of
 
-    return img_glitched
+# Flag to ignore initial frames until the first face is detected
+first_face_detected = False
 
-# Function to update each frame
-def update(i):
+while cap.isOpened():
+    # Initialize current_frame as an empty image
+    current_frame = np.zeros((IMG_SIZE[0], IMG_SIZE[1], 3), dtype='uint8')
+
     # Read the next frame
     ret, frame = cap.read()
 
-    if not ret:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        return
+    if not ret:  # If we're out of frames, end the loop
+        break
 
-    # Convert frame to grayscale for detection (not needed for dlib but common for other detectors)
+    # Convert frame to grayscale for detection
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # If no faces are currently being tracked, detect faces
-    if not trackers:
-        faces = detector(gray)
+    faces = detector(gray)
 
-        # For each face detected
+    cropped_images = []  # List to store the cropped images
+
+    if faces:  # If faces are detected
+        first_face_detected = True  # Set the flag
         for rect in faces:
-            # Initialize a new tracker for this face and start tracking
-            tracker = dlib.correlation_tracker()
-            tracker.start_track(frame, rect)
-            trackers.append(tracker)
-
-            # Random position for the new axis
-            random_x = random.uniform(0, 1)
-            random_y = random.uniform(0, 1)
-
-            # Add a new axis for this face
-            ax = fig.add_axes([random_x, random_y, 0.1, 0.1])
-            ax.axis('off')  # Turn off axis lines and labels
-            axes.append(ax)
-
-            # Display the face in this axis
-            img = ax.imshow(np.zeros((1, 1, 3)))
-            images.append(img)
-
-    # If faces are currently being tracked, update the trackers and display the faces
-    else:
-        for tracker, ax, img in zip(trackers, axes, images):
-            # Update the tracker
-            tracker.update(frame)
-
-            # Get the position of the face
-            pos = tracker.get_position()
-
-            # Convert position to integers
-            startX = int(pos.left())
-            startY = int(pos.top())
-            endX = int(pos.right())
-            endY = int(pos.bottom())
+            startX = rect.left()
+            startY = rect.top()
+            endX = rect.right()
+            endY = rect.bottom()
 
             # Crop the face
             crop = frame[startY:endY, startX:endX]
 
-            # Enlarge the cropped face by a random factor to simulate zooming
-            zoom_factor = random.uniform(1, 1.5)
-            crop = cv2.resize(crop, None, fx=zoom_factor, fy=zoom_factor)
+            # Check if the cropped image is not empty
+            if crop.size == 0:
+                continue
+
+            # Resize the cropped face to a standard size
+            crop = cv2.resize(crop, IMG_SIZE)
 
             # Apply the glitch effect
             crop = glitch(crop)
 
-            # Update the image data
-            img.set_data(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            # Apply a Gaussian blur for smoothing
+            crop = cv2.GaussianBlur(crop, (5, 5), 0)
 
-    # Draw the figure on the screen
-    plt.draw()
+            # Append the cropped image to the list
+            cropped_images.append(crop)
 
-# Animation object
-ani = animation.FuncAnimation(fig, update, frames=range(100), repeat=False)
+            # Update the list of last images
+            if len(last_images) >= num_last_images:
+                last_images.pop(0)  # Remove the oldest frame if we've reached the limit
+            last_images.append(crop)  # Add the current image to the end
+            last_image_index = len(last_images) - 1  # The last image is now the current one
+    elif first_face_detected:  # If no faces are detected, but we've seen at least one face before
+        last_image_index -= 1  # Go to the previous image
+        if last_image_index < 0:
+            # Loop back to the end if we've reached the start
+            last_image_index = len(last_images) - 1
+        if last_images:
+            # Add the last image to the cropped_images
+            cropped_images.append(last_images[last_image_index])
 
-# Show the plot
-plt.show()
+    # Process the images based on the number of detected or reused faces
+    if len(cropped_images) == 1:
+        current_frame = np.vstack([cropped_images[0]] * 3)
+    elif len(cropped_images) == 2:
+        current_frame = np.vstack((np.hstack((cropped_images[0], cropped_images[1])),
+                                   np.hstack((cropped_images[0], cropped_images[1]))))
+    elif len(cropped_images) >= 3:
+        current_frame = np.vstack((np.hstack((cropped_images[0], cropped_images[1], cropped_images[2])),
+                                   np.hstack(
+                                       (cropped_images[0], cropped_images[1], cropped_images[2])),
+                                   np.hstack((cropped_images[0], cropped_images[1], cropped_images[2]))))
 
-# Release the video capture when everything is done
+    # Resize the image to the display size
+    current_frame = cv2.resize(current_frame, DISPLAY_SIZE)
+
+    # Write the frame to the output file before displaying
+    out.write(current_frame)
+
+    # Display the images
+    cv2.imshow("Faces", current_frame)
+
+    # Check if the user wants to quit
+    if cv2.waitKey(5) & 0xFF == ord('q'):
+        break
+
+# Release the video capture and writer when everything is done
 cap.release()
+out.release()
 cv2.destroyAllWindows()
