@@ -43,24 +43,29 @@ while(cap.isOpened()):
 
             landmarks = predictor(image=gray, box=face)
 
-            # Face
-            face_frame = frame[y1:y2, x1:x2]
-            out_faces.write(face_frame)
+            # Check if regions have non-zero size before writing them to video
+            if y2 - y1 > 0 and x2 - x1 > 0:
+                # Face
+                face_frame = frame[y1:y2, x1:x2]
+                out_faces.write(face_frame)
 
-            # Mouth
-            mouth_frame = frame[landmarks.part(48).y:landmarks.part(66).y,
-                                landmarks.part(48).x:landmarks.part(66).x]
-            out_mouths.write(mouth_frame)
+            if landmarks.part(66).y - landmarks.part(48).y > 0 and landmarks.part(66).x - landmarks.part(48).x > 0:
+                # Mouth
+                mouth_frame = frame[landmarks.part(48).y:landmarks.part(66).y,
+                                    landmarks.part(48).x:landmarks.part(66).x]
+                out_mouths.write(mouth_frame)
 
-            # Left Eye
-            leye_frame = frame[landmarks.part(36).y:landmarks.part(41).y,
-                               landmarks.part(36).x:landmarks.part(41).x]
-            out_leyes.write(leye_frame)
+            if landmarks.part(41).y - landmarks.part(36).y > 0 and landmarks.part(41).x - landmarks.part(36).x > 0:
+                # Left Eye
+                leye_frame = frame[landmarks.part(36).y:landmarks.part(41).y,
+                                   landmarks.part(36).x:landmarks.part(41).x]
+                out_leyes.write(leye_frame)
 
-            # Right Eye
-            reye_frame = frame[landmarks.part(42).y:landmarks.part(47).y,
-                               landmarks.part(42).x:landmarks.part(47).x]
-            out_reyes.write(reye_frame)
+            if landmarks.part(47).y - landmarks.part(42).y > 0 and landmarks.part(47).x - landmarks.part(42).x > 0:
+                # Right Eye
+                reye_frame = frame[landmarks.part(42).y:landmarks.part(47).y,
+                                   landmarks.part(42).x:landmarks.part(47).x]
+                out_reyes.write(reye_frame)
 
     else:
         break
@@ -77,23 +82,23 @@ input = input_video
 output = filename + '_output.mp4'
 
 # Overlay faces
-if os.path.isfile(output_faces):
-    subprocess.run(['ffmpeg', '-i', input, '-i', output_faces, '-filter_complex', '[1:v]scale=iw/4:ih/4 [face]; [0:v][face]overlay=W-w:H:h', output])
+if os.path.getsize(output_faces) > 0:
+    subprocess.run(['ffmpeg', '-i', input, '-i', output_faces, '-filter_complex', '[1:v]scale=iw/4:ih/4 [face]; [0:v][face]overlay=W-w:H:h', '-y', output])
     input = output
 
 # Overlay left eye
-if os.path.isfile(output_leyes):
-    subprocess.run(['ffmpeg', '-i', input, '-i', output_leyes, '-filter_complex', '[1:v]scale=iw/4:ih/4 [leye]; [0:v][leye]overlay=0:H:h', output])
+if os.path.getsize(output_leyes) > 0:
+    subprocess.run(['ffmpeg', '-i', input, '-i', output_leyes, '-filter_complex', '[1:v]scale=iw/4:ih/4 [leye]; [0:v][leye]overlay=0:H:h', '-y', output])
     input = output
 
 # Overlay right eye
-if os.path.isfile(output_reyes):
-    subprocess.run(['ffmpeg', '-i', input, '-i', output_reyes, '-filter_complex', '[1:v]scale=iw/4:ih/4 [reye]; [0:v][reye]overlay=W-w:0', output])
+if os.path.getsize(output_reyes) > 0:
+    subprocess.run(['ffmpeg', '-i', input, '-i', output_reyes, '-filter_complex', '[1:v]scale=iw/4:ih/4 [reye]; [0:v][reye]overlay=W-w:0', '-y', output])
     input = output
 
 # Overlay mouth
-if os.path.isfile(output_mouths):
-    subprocess.run(['ffmpeg', '-i', input, '-i', output_mouths, '-filter_complex', '[1:v]scale=iw/4:ih/4 [mouth]; [0:v][mouth]overlay=0:0', output])
+if os.path.getsize(output_mouths) > 0:
+    subprocess.run(['ffmpeg', '-i', input, '-i', output_mouths, '-filter_complex', '[1:v]scale=iw/4:ih/4 [mouth]; [0:v][mouth]overlay=0:0', '-y', output])
 
 # Playback the output video
 subprocess.run(['ffplay', output])
